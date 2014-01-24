@@ -79,7 +79,7 @@ class Cassandra implements AuthorizationCodeInterface,
         $cf = new \phpcassa\ColumnFamily($this->cassandra, $cf_name);
 
         try {
-            $value = array_map('__backend_data_decode', $cf->get($key, new ColumnSlice("", "")));
+            $value = $this->__cass_data_decode($cf->get($key, new ColumnSlice("", "")));
             return $value;
         } catch (\cassandra\NotFoundException $e) {
             return false;
@@ -96,24 +96,23 @@ class Cassandra implements AuthorizationCodeInterface,
         $cf = new ColumnFamily($this->cassandra, $cf_name);
 
         if ($expire > 0) {
-         
             try {
                 $seconds = $expire - time();
                 // __data key set as C* requires a field, note: max TTL can only be 630720000 seconds
-                $cf->insert($key, array_map('__backend_data_encode', $value), null, $seconds);
-            } catch(\cassandra\InvalidRequestException $e) {
+                $cf->insert($key, $this->__cass_data_encode($value), null, $seconds);
+            } catch(\Exception $e) {
                 return false;
             }
         } else {
             try {
                 // __data key set as C* requires a field
-                $cf->insert($key, array_map('__backend_data_encode', $value));
-            } catch(\cassandra\InvalidRequestException $e) {
+                $cf->insert($key, $this->__cass_data_encode($value));
+            } catch(\Exception $e) {
                 return false;
             }
         }
 
-        return $value;
+        return true;
     }
 
     protected function expireValue($key)
@@ -127,7 +126,7 @@ class Cassandra implements AuthorizationCodeInterface,
         try {
             // __data key set as C* requires a field
             $cf->remove($key);
-        } catch(\cassandra\InvalidRequestException $e) {
+        } catch(\Exception $e) {
             return false;
         }
 
@@ -343,28 +342,49 @@ class Cassandra implements AuthorizationCodeInterface,
         //TODO: Needs cassandra implementation.
         throw new \Exception('setJti() for the Cassandra driver is currently unimplemented.');
     }
-}
 
-
-function __backend_data_encode($value)
-{
-    //print_r($value);
-    if (gettype($value) == "array" || gettype($value) == "object")
+    private function __cass_data_encode($array)
     {
-        return '_json:' . json_encode($value);
-    }
-    
-    return $value;
-
-}
-
-function __backend_data_decode($value)
-{
-    //print_r($value);
-    if (strpos($value, '_json:') !== false)
-    {
-        return json_decode(substr($value, 6), true);
+        foreach ($array as $key => $value)
+        {
+            if (is_array($value))
+            {
+                $this->__cass_data_encode_recursive($key, $value, $array);
+                unset($array[$key]);
+            }
+        }
+ 
+        return $array;
     }
 
-    return $value;
+    private function __cass_data_encode_recursive($key, $value, &$array)
+    {
+        if (is_array($value))
+        {
+            foreach ($value as $item_key => $item_value)
+            {
+                $this->__cass_data_encode_recursive($key . "[+]" . $item_key, $item_value, $array);
+            }
+        }
+        elseif (isset($value))
+        {
+            $array["" . $key . ""] = $value;
+        }
+    }
+
+    private function __cass_data_decode(&$array)
+    {
+        foreach ($array as $item_key => $item_value)
+        {
+            if (preg_match("/\[\+\]/", $item_key))
+            {
+                $eval = "\$array['" . str_replace("[+]", "']['", str_replace("'", "\\'", $item_key)) . "'] = '" . str_replace("'", "\\'", $item_value) . "';";
+                eval($eval);
+
+                unset($array[$item_key]);
+            }
+        }
+
+        return $array;
+    }
 }
