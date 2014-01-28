@@ -90,7 +90,7 @@ class AuthorizeController implements AuthorizeControllerInterface
             'scope'         => $this->scope,
             'state'         => $this->state,
             'client_id'     => $this->client_id,
-            'redirect_uri'  => $this->redirect_uri,
+            'redirect_uri'  => $this->redirect_uri ? $this->redirect_uri : $registered_redirect_uri,
             'response_type' => $this->response_type,
         );
 
@@ -131,7 +131,8 @@ class AuthorizeController implements AuthorizeControllerInterface
         // @see http://tools.ietf.org/html/rfc6749#section-3.1.2
         // @see http://tools.ietf.org/html/rfc6749#section-4.1.2.1
         // @see http://tools.ietf.org/html/rfc6749#section-4.2.2.1
-        if ($supplied_redirect_uri = $request->query('redirect_uri')) {
+
+        if ($registered_redirect_uri != $request->query('redirect_uri')) {
             // validate there is no fragment supplied
             $parts = parse_url($supplied_redirect_uri);
             if (isset($parts['fragment']) && $parts['fragment']) {
