@@ -15,6 +15,9 @@
     "require":{
         "php":">=5.3.9"
     },
+    "suggest":{
+        "thobbs/phpcassa": "dev-master"
+    },
     "autoload": {
         "psr-0": { "OAuth2": "src/" }
     }
