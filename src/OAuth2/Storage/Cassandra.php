@@ -79,7 +79,8 @@ class Cassandra implements AuthorizationCodeInterface,
         $cf = new \phpcassa\ColumnFamily($this->cassandra, $cf_name);
 
         try {
-            $value = $this->__cass_data_decode($cf->get($key, new ColumnSlice("", "")));
+            $data = (array)$cf->get($key, new ColumnSlice("", ""));
+            $value = $this->__cass_data_decode($data);
             return $value;
         } catch (\cassandra\NotFoundException $e) {
             return false;
