@@ -379,13 +379,28 @@ class Cassandra implements AuthorizationCodeInterface,
         {
             if (preg_match("/\[\+\]/", $item_key))
             {
-                $eval = "\$array['" . str_replace("[+]", "']['", str_replace("'", "\\'", $item_key)) . "'] = '" . str_replace("'", "\\'", $item_value) . "';";
-                eval($eval);
+                
+                $keys = preg_split("/\[\+\]/", $item_key);
+
+                $this->decode_build($array, $keys, $item_value);
+
+                //$eval = "\$array['" . str_replace("[+]", "']['", str_replace("'", "\\'", $item_key)) . "'] = '" . str_replace("'", "\\'", $item_value) . "';";
+                //eval($eval);
 
                 unset($array[$item_key]);
             }
         }
 
         return $array;
+    }
+
+
+    private function decode_build(array &$output, $keys, $val) 
+    {
+        $loc = &$output;
+        foreach($keys as $step) {
+            $loc = &$loc[$step];
+        }
+        return $loc = $val;
     }
 }
