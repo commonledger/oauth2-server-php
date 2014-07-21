@@ -177,9 +177,12 @@ class Cassandra implements AuthorizationCodeInterface,
         }
 
         // the default behavior is to use "username" as the user_id
-        return array_merge(array(
-            'user_id' => $username,
-        ), $userInfo);
+        return array_merge(
+            $userInfo, 
+            array(
+                'user_id' => $username
+            )
+        );
     }
 
     public function setUser($username, $password, $first_name = null, $last_name = null)
